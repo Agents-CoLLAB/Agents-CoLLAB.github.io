@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CoLLAB: A Framework for Designing Scalable Benchmarks for Agentic LLMs</title>
+  <meta name="description" content="CoLLAB: A Framework for Designing Scalable Benchmarks for Agentic LLMs" />
+  <style>
+    :root { --max: 900px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; line-height: 1.55; margin: 0; color: #111; }
+    .wrap { max-width: var(--max); margin: 3rem auto; padding: 0 1rem; }
+    h1 { font-size: clamp(1.6rem, 3vw + 1rem, 2.2rem); margin: 0 0 0.5rem; line-height: 1.2; }
+    .meta { color: #444; margin: 0.2rem 0 1rem; }
+    .links a { display: inline-block; margin-right: 0.75rem; text-decoration: none; border-bottom: 1px solid currentColor; }
+    .card { background: #f8f8f8; padding: 1rem; border-radius: 12px; }
+    .section-title { font-weight: 700; margin: 1.25rem 0 0.5rem; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0e0f12; color: #e8e9ea; }
+      .meta { color: #b8b9ba; }
+      .card { background: #17181c; }
+      a { color: #8ab4ff; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>CoLLAB: A Framework for Designing Scalable Benchmarks for Agentic LLMs</h1>
+
+    <p class="meta">
+      Saaduddin Mahmud, Eugene Bagdasarian, Shlomo Zilberstein<br/>
+      University of Massachusetts Amherst<br/>
+      <a href="mailto:smahmud@umass.edu">smahmud@umass.edu</a> ·
+      <a href="mailto:eugene@umass.edu">eugene@umass.edu</a> ·
+      <a href="mailto:shlomo@umass.edu">shlomo@umass.edu</a>
+    </p>
+
+    <p class="links">
+      <a href="https://github.com/Saad-Mahmud/CoLLAB_SEA" target="_blank" rel="noopener">GitHub Repo</a>
+      <a href="https://openreview.net/forum?id=372FjQy1cF" target="_blank" rel="noopener">Paper (OpenReview)</a>
+    </p>
+
+    <div class="card">
+      <div class="section-title">Abstract</div>
+      <p>
+        Agents capable of making decisions from complex, unstructured instructions have seen a surge with the rise of large language models (LLMs). However, their ability to coordinate with other agents while following instructions is still an active area of research. To facilitate research in this area, we introduce a framework for designing scalable environments to evaluate coordination in agentic LLM networks, called Coordinating LLM Agents Benchmark (CoLLAB). CoLLAB adapts a widely used classical cooperative multi-agent problem-solving framework called Distributed Constraint Optimization Problems (DCOPs), and extends it with unstructured instructions and communication, making it directly relevant for studying coordination in agentic LLM networks. We provide a design blueprint for how CoLLAB environments can scale across multiple dimensions. Finally, we implement three case-study environments within this framework and evaluate a range of LLM-based agents on them. Performance is quantitatively compared to well-established symbolic solvers, enabling us to directly assess the quality of LLM-generated solutions relative to a proven baseline. In addition, we study how scaling environment complexity affects agent performance across these environments.
+      </p>
+      <p><strong>Code:</strong> <a href="https://github.com/Saad-Mahmud/CoLLAB_SEA" target="_blank" rel="noopener">https://github.com/Saad-Mahmud/CoLLAB_SEA</a></p>
+    </div>
+  </main>
+</body>
+</html>
