@@ -3,27 +3,206 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CoLLAB Demo</title>
+  <title>CoLLAB — Personal Assistant (Serverless Demo)</title>
+  <meta name="description" content="Serverless demo of CoLLAB personal assistant with 6 agents" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 0; background: #0e1117; color: #e8e9ea; }
-    .wrap { max-width: 960px; margin: 3rem auto; padding: 0 1rem; }
-    .card { background: #141821; border: 1px solid rgba(255,255,255,0.08); padding: 1.25rem; border-radius: 14px; }
+    :root {
+      --bg: #0e1117;
+      --panel: #141821;
+      --muted: #b7c0cc;
+      --accent: #5b8cff;
+      --accent-2: #7bf0ff;
+      --ring-size: 680px;
+      --agent-w: 200px;
+      --agent-h: 210px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background: var(--bg); color: #e8e9ea; }
     a { color: #8ab4ff; text-decoration: none; }
-    .back { display: inline-block; margin-bottom: 1rem; }
+    .layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 16px; }
+    .sidebar { background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; position: sticky; top: 12px; height: fit-content; }
+    .sidebar h2 { margin: 0 0 8px; font-size: 1.1rem; }
+    .sidebar label { display: block; font-size: 0.9rem; color: var(--muted); margin-top: 10px; }
+    .sidebar input[type="password"], .sidebar input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: #0f131a; color: #e8e9ea; }
+    .btn { display: inline-block; margin-top: 10px; padding: 10px 12px; font-weight: 700; color: white; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border: none; cursor: pointer; }
+    .btn.secondary { background: #263143; color: #e8e9ea; font-weight: 600; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+
+    .canvas { position: relative; background: #0f131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; min-height: 760px; overflow: hidden; }
+    .ring { position: relative; width: var(--ring-size); height: var(--ring-size); margin: 24px auto; }
+    svg.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .agent { position: absolute; width: var(--agent-w); height: var(--agent-h); background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+    .agent h3 { margin: 0 0 6px; font-size: 1.05rem; }
+    .wardrobe { font-size: 0.85rem; line-height: 1.35; max-height: 64px; overflow-y: auto; background: rgba(255,255,255,0.04); padding: 6px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); }
+    .toggle { display: inline-flex; gap: 6px; margin-top: 6px; }
+    .pill { padding: 5px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.8rem; cursor: pointer; user-select: none; }
+    .pill.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #0f131a; border-color: transparent; }
+    .prefs { display: flex; gap: 6px; margin-top: 8px; }
+    .chip { padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem; }
+    .agent .footer { position: absolute; left: 8px; right: 8px; bottom: 8px; }
+
+    .legend { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #0f131a; border-top: 1px solid rgba(255,255,255,0.08); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); display: inline-block; }
   </style>
-  <meta name="description" content="CoLLAB demo landing" />
 </head>
 <body>
-  <main class="wrap">
-    <a class="back" href="index.html">← Back to CoLLAB</a>
-    <div class="card">
-      <h1>CoLLAB Demo</h1>
-      <p>
-        This page will host an interactive demo of the CoLLAB framework. Stay tuned! In the meantime,
-        see the GitHub repo and paper linked on the homepage.
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>Controls</h2>
+      <label>OpenAI API Key
+        <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+      </label>
+      <button class="btn" id="btnGenerate">Generate Problem</button>
+      <button class="btn secondary" id="btnStep" title="Coming soon — runs one decision step with GPT" disabled>Run 1 Step (GPT)</button>
+      <p class="muted">This serverless demo generates a 6‑agent personal assistant instance in your browser. The decision step via GPT will use your API key locally (not sent to our servers).
       </p>
-    </div>
-  </main>
+    </aside>
+    <main class="canvas">
+      <div class="ring" id="ring">
+        <svg class="links" id="links" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <!-- Agents injected by script -->
+      </div>
+      <div class="legend"><span class="dot"></span><span class="muted">Edges show neighbour relations (ring + opposite)</span></div>
+    </main>
+  </div>
+
+  <script>
+    const N = 6;
+    const AGENT_NAMES = ["Avery","Riley","Jordan","Taylor","Casey","Quinn"];
+    const ARTICLES = ["shirt","dress","jacket","blouse","sweater","coat","t‑shirt","hoodie"]; // simple
+    const COLORS = ["red","blue","green","yellow","black","white","purple","orange","pink","teal"];
+
+    const state = { agents: [], edges: [] };
+
+    function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+    function choice(arr){ return arr[randInt(0,arr.length-1)]; }
+    function sample(arr, k){ const s = arr.slice(); const out=[]; while(out.length<k && s.length){ out.push(s.splice(randInt(0,s.length-1),1)[0]); } return out; }
+
+    function generateProblem(){
+      state.agents = [];
+      // neighbours: i-1, i+1, and opposite (i+3 mod N)
+      state.edges = [];
+      for(let i=0;i<N;i++){
+        const name = AGENT_NAMES[i%AGENT_NAMES.length];
+        // wardrobe: 5 items
+        const items = [];
+        const used = new Set();
+        while(items.length<5){
+          const a = choice(ARTICLES);
+          const c = choice(COLORS);
+          const key = a+"|"+c;
+          if(used.has(key)) continue;
+          used.add(key);
+          items.push({ article:a, color:c });
+        }
+        const prefColors = sample([...new Set(items.map(it=>it.color))], Math.min(2, items.length));
+        state.agents.push({ id:i, name, items, prefColors, mode:"match" });
+      }
+      for(let i=0;i<N;i++){
+        const a=i, b=(i+1)%N, c=(i+N-1)%N, d=(i+3)%N;
+        // store undirected unique edges
+        for(const [u,v] of [[a,b],[a,c],[a,d]]){
+          const key = u<v ? `${u}-${v}` : `${v}-${u}`;
+          if(!state.edges.find(e=>e.key===key)) state.edges.push({u:Math.min(u,v), v:Math.max(u,v), key});
+        }
+      }
+      render();
+    }
+
+    function agentPosition(i){
+      const ring = document.getElementById('ring');
+      const R = ring.getBoundingClientRect();
+      const cx = R.width/2, cy = R.height/2;
+      const radius = Math.min(R.width,R.height)/2 - 120; // margin
+      const theta = (2*Math.PI * i)/N - Math.PI/2; // start at top
+      const x = cx + radius * Math.cos(theta);
+      const y = cy + radius * Math.sin(theta);
+      return { x, y };
+    }
+
+    function render(){
+      const ring = document.getElementById('ring');
+      // clear existing agents
+      [...ring.querySelectorAll('.agent')].forEach(n=>n.remove());
+      // build agents
+      state.agents.forEach((agent,i)=>{
+        const el = document.createElement('div');
+        el.className = 'agent';
+        el.dataset.agent = i;
+        const wtxt = agent.items.map((it,idx)=>`#${idx+1} ${it.color} ${it.article}`).join(', ');
+        el.innerHTML = `
+          <h3>👤 ${agent.name}</h3>
+          <div class="wardrobe">${wtxt}</div>
+          <div class="toggle">
+            <span class="pill ${agent.mode==='match'?'active':''}" data-mode="match">Match</span>
+            <span class="pill ${agent.mode==='contrast'?'active':''}" data-mode="contrast">Not Match</span>
+          </div>
+          <div class="footer">
+            <div class="muted" style="margin-bottom:4px;">Preferred colours</div>
+            <div class="prefs">${agent.prefColors.map(c=>`<span class="chip">${c}</span>`).join('')}</div>
+          </div>`;
+        ring.appendChild(el);
+        // place around circle
+        const {x,y} = agentPosition(i);
+        const rect = { w: el.offsetWidth, h: el.offsetHeight };
+        el.style.left = `${x - rect.w/2}px`;
+        el.style.top  = `${y - rect.h/2}px`;
+        // toggle handlers
+        el.querySelectorAll('.pill').forEach(p=>{
+          p.addEventListener('click', (ev)=>{
+            const mode = ev.currentTarget.getAttribute('data-mode');
+            agent.mode = mode;
+            el.querySelectorAll('.pill').forEach(q=>q.classList.remove('active'));
+            ev.currentTarget.classList.add('active');
+          });
+        });
+      });
+      drawLinks();
+    }
+
+    function centerOf(el){
+      const r = el.getBoundingClientRect();
+      const parent = document.getElementById('ring').getBoundingClientRect();
+      return { x: r.left - parent.left + r.width/2, y: r.top - parent.top + r.height/2 };
+    }
+
+    function drawLinks(){
+      const svg = document.getElementById('links');
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+      const ring = document.getElementById('ring');
+      const R = ring.getBoundingClientRect();
+      const scaleX = 100 / R.width; const scaleY = 100 / R.height;
+      state.edges.forEach(({u,v})=>{
+        const a = ring.querySelector(`.agent[data-agent="${u}"]`);
+        const b = ring.querySelector(`.agent[data-agent="${v}"]`);
+        if(!a||!b) return;
+        const ca = centerOf(a), cb = centerOf(b);
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1', (ca.x*scaleX).toFixed(2));
+        line.setAttribute('y1', (ca.y*scaleY).toFixed(2));
+        line.setAttribute('x2', (cb.x*scaleX).toFixed(2));
+        line.setAttribute('y2', (cb.y*scaleY).toFixed(2));
+        line.setAttribute('stroke', 'rgba(123,240,255,0.8)');
+        line.setAttribute('stroke-width', '0.6');
+        svg.appendChild(line);
+      });
+    }
+
+    // Controls
+    document.getElementById('btnGenerate').addEventListener('click', generateProblem);
+    // Placeholder: store key locally (not used yet)
+    document.getElementById('apiKey').addEventListener('input', (e)=>{
+      try { localStorage.setItem('collab_demo_openai_key', e.target.value || ''); } catch(e){}
+    });
+    // Restore stored key
+    try {
+      const saved = localStorage.getItem('collab_demo_openai_key');
+      if(saved) document.getElementById('apiKey').value = saved;
+    } catch(e){}
+
+    // Initial
+    window.addEventListener('resize', ()=>{ render(); });
+    generateProblem();
+  </script>
 </body>
 </html>
-
