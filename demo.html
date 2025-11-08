@@ -51,6 +51,18 @@
     .legend { display: flex; gap: 12px; align-items: center; }
     .legend .item { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); font-size: 0.9rem; }
     .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+    /* --- Mobile layout: stack sidebar above canvas and shrink ring --- */
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .ring {
+        width: min(560px, calc(100vw - 40px));
+        height: min(560px, calc(100vw - 40px));
+        margin: 16px auto 24px;
+      }
+      .canvas { min-height: calc(min(560px, calc(100vw - 40px)) + 140px); }
+    }
   </style>
 </head>
 <body>
