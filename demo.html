@@ -31,6 +31,8 @@
     .canvas { position: relative; background: #0f131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; min-height: calc(var(--ring-size) + 120px); overflow: auto; }
     .topbar { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(20,24,33,0.9); border-bottom: 1px solid rgba(255,255,255,0.08); }
     .title { font-weight: 800; letter-spacing: 0.3px; }
+    .topbar-right { display: flex; gap: 10px; align-items: center; }
+    .util { padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); font-weight: 700; font-size: 0.95rem; }
     .ring { position: relative; width: var(--ring-size); height: var(--ring-size); margin: 24px auto 32px; }
     svg.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
     .agent { position: absolute; width: var(--agent-w); height: var(--agent-h); background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.25); z-index: 1; }
@@ -63,10 +65,13 @@
     <main class="canvas">
       <div class="topbar">
         <div class="title">CoLLAB Personal Assistant Environment</div>
-        <div class="legend">
-          <span class="item"><span class="dot" style="background:#57d487"></span>Match</span>
-          <span class="item"><span class="dot" style="background:#ff6b6b"></span>Not match</span>
-          <span class="item"><span class="dot" style="background:#3aa3ff"></span>Disagree</span>
+        <div class="topbar-right">
+          <div class="util" id="util">Utility: 0</div>
+          <div class="legend">
+            <span class="item"><span class="dot" style="background:#57d487"></span>Match</span>
+            <span class="item"><span class="dot" style="background:#ff6b6b"></span>Not match</span>
+            <span class="item"><span class="dot" style="background:#3aa3ff"></span>Disagree</span>
+          </div>
         </div>
       </div>
       <div class="ring" id="ring">
@@ -106,7 +111,8 @@
           items.push({ article:a, color:c });
         }
         const prefColors = sample([...new Set(items.map(it=>it.color))], Math.min(2, items.length));
-        state.agents.push({ id:i, name, items, prefColors });
+        const choiceIdx = randInt(0, items.length-1);
+        state.agents.push({ id:i, name, items, prefColors, choice: choiceIdx });
       }
       for(let i=0;i<N;i++){
         const a=i, b=(i+1)%N, c=(i+N-1)%N, d=(i+3)%N;
@@ -148,9 +154,11 @@
         el.className = 'agent';
         el.dataset.agent = i;
         const wtxt = agent.items.map((it,idx)=>`#${idx+1} ${it.color} ${it.article}`).join(', ');
+        const chosen = agent.items[agent.choice];
         el.innerHTML = `
           <h3>👤 ${agent.name}</h3>
           <div class="wardrobe">${wtxt}</div>
+          <div class="muted" style="margin-top:6px;">Chosen outfit: <strong>#${agent.choice+1} ${chosen.color} ${chosen.article}</strong></div>
           <div class="footer">
             <div class="muted" style="margin-bottom:4px;">Preferred colours</div>
             <div class="prefs">${agent.prefColors.map(c=>`<span class="chip">${c}</span>`).join('')}</div>
@@ -205,6 +213,29 @@
         line.setAttribute('stroke-linecap', 'round');
         svg.appendChild(line);
       });
+      updateUtility();
+    }
+
+    function updateUtility(){
+      let total = 0;
+      state.edges.forEach(({u,v})=>{
+        const key = u<v ? `${u}-${v}` : `${v}-${u}`;
+        const prefs = state.edgePrefs[key] || {};
+        const uChoice = state.agents[u].items[state.agents[u].choice];
+        const vChoice = state.agents[v].items[state.agents[v].choice];
+        const pu = prefs[`${u}->${v}`] || 'match';
+        const pv = prefs[`${v}->${u}`] || 'match';
+        if (pu === 'match') { if (uChoice.color === vChoice.color) total += 1; }
+        else { if (uChoice.color !== vChoice.color) total += 1; }
+        if (pv === 'match') { if (uChoice.color === vChoice.color) total += 1; }
+        else { if (uChoice.color !== vChoice.color) total += 1; }
+      });
+      state.agents.forEach(a=>{
+        const chosen = a.items[a.choice];
+        if (a.prefColors.includes(chosen.color)) total += 1;
+      });
+      const utilEl = document.getElementById('util');
+      if (utilEl) utilEl.textContent = `Utility: ${total}`;
     }
 
     // Controls
