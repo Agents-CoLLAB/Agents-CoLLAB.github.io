@@ -6,46 +6,79 @@
   <title>CoLLAB: A Framework for Designing Scalable Benchmarks for Agentic LLMs</title>
   <meta name="description" content="CoLLAB: A Framework for Designing Scalable Benchmarks for Agentic LLMs" />
   <style>
-    :root { --max: 900px; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; line-height: 1.55; margin: 0; color: #111; }
-    .wrap { max-width: var(--max); margin: 3rem auto; padding: 0 1rem; }
-    h1 { font-size: clamp(1.6rem, 3vw + 1rem, 2.2rem); margin: 0 0 0.5rem; line-height: 1.2; }
+    :root {
+      --max: 980px;
+      --accent: #5b8cff;
+      --accent-2: #7bf0ff;
+      --bg-grad-1: #0e1117;
+      --bg-grad-2: #1a2333;
+    }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      line-height: 1.55; margin: 0; color: #111;
+      background: linear-gradient(180deg, #f7f9fc 0%, #eef2f8 100%);
+    }
+    .wrap { max-width: var(--max); margin: 2.5rem auto; padding: 0 1rem; }
+    .hero {
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(91,140,255,0.12), transparent),
+                  radial-gradient(1000px 600px at 100% 0%, rgba(123,240,255,0.12), transparent);
+      border-radius: 20px; padding: 2rem 1.25rem; margin-bottom: 1.5rem;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    h1 { font-size: clamp(1.8rem, 3vw + 1rem, 2.6rem); margin: 0 0 0.75rem; line-height: 1.2; }
     .meta { color: #444; margin: 0.2rem 0 1rem; }
     .links a { display: inline-block; margin-right: 0.75rem; text-decoration: none; border-bottom: 1px solid currentColor; }
-    .card { background: #f8f8f8; padding: 1rem; border-radius: 12px; }
-    .section-title { font-weight: 700; margin: 1.25rem 0 0.5rem; }
+    .cta {
+      display: inline-block; margin-top: 0.75rem; padding: 0.9rem 1.25rem; font-weight: 700;
+      color: white; text-decoration: none; border-radius: 12px; letter-spacing: 0.3px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 10px 24px rgba(91,140,255,0.35);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .cta:hover { transform: translateY(-1px); box-shadow: 0 16px 28px rgba(91,140,255,0.45); }
+    .card { background: #ffffffcc; padding: 1.25rem; border-radius: 14px; border: 1px solid rgba(0,0,0,0.06); }
+    .section-title { font-weight: 800; margin: 1.25rem 0 0.5rem; }
+    figure { margin: 1.25rem 0; }
+    figure img { width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(0,0,0,0.06); }
+    figcaption { text-align: center; color: #555; font-size: 0.95rem; margin-top: 0.5rem; }
     @media (prefers-color-scheme: dark) {
-      body { background: #0e0f12; color: #e8e9ea; }
+      body { background: linear-gradient(180deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%); color: #e8e9ea; }
       .meta { color: #b8b9ba; }
-      .card { background: #17181c; }
+      .card { background: #141821; border-color: rgba(255,255,255,0.08); }
       a { color: #8ab4ff; }
+      figcaption { color: #b8b9ba; }
     }
   </style>
 </head>
 <body>
   <main class="wrap">
-    <h1>CoLLAB: A Framework for Designing Scalable Benchmarks for Agentic LLMs</h1>
-
-    <p class="meta">
+    <div class="hero">
+      <h1>CoLLAB: A Framework for Designing Scalable Benchmarks for Agentic LLMs</h1>
+      <p class="meta">
       Saaduddin Mahmud, Eugene Bagdasarian, Shlomo Zilberstein<br/>
       University of Massachusetts Amherst<br/>
       <a href="mailto:smahmud@umass.edu">smahmud@umass.edu</a> ·
       <a href="mailto:eugene@umass.edu">eugene@umass.edu</a> ·
       <a href="mailto:shlomo@umass.edu">shlomo@umass.edu</a>
-    </p>
-
-    <p class="links">
-      <a href="https://github.com/Saad-Mahmud/CoLLAB_SEA" target="_blank" rel="noopener">GitHub Repo</a>
-      <a href="https://openreview.net/forum?id=372FjQy1cF" target="_blank" rel="noopener">Paper (OpenReview)</a>
-    </p>
+      </p>
+      <p class="links">
+        <a href="https://github.com/Saad-Mahmud/CoLLAB_SEA" target="_blank" rel="noopener">GitHub Repo</a>
+        <a href="https://openreview.net/forum?id=372FjQy1cF" target="_blank" rel="noopener">Paper (OpenReview)</a>
+      </p>
+      <a class="cta" href="demo.html">🚀 DEMO CoLLAB</a>
+    </div>
 
     <div class="card">
       <div class="section-title">Abstract</div>
       <p>
         Agents capable of making decisions from complex, unstructured instructions have seen a surge with the rise of large language models (LLMs). However, their ability to coordinate with other agents while following instructions is still an active area of research. To facilitate research in this area, we introduce a framework for designing scalable environments to evaluate coordination in agentic LLM networks, called Coordinating LLM Agents Benchmark (CoLLAB). CoLLAB adapts a widely used classical cooperative multi-agent problem-solving framework called Distributed Constraint Optimization Problems (DCOPs), and extends it with unstructured instructions and communication, making it directly relevant for studying coordination in agentic LLM networks. We provide a design blueprint for how CoLLAB environments can scale across multiple dimensions. Finally, we implement three case-study environments within this framework and evaluate a range of LLM-based agents on them. Performance is quantitatively compared to well-established symbolic solvers, enabling us to directly assess the quality of LLM-generated solutions relative to a proven baseline. In addition, we study how scaling environment complexity affects agent performance across these environments.
       </p>
-      <p><strong>Code:</strong> <a href="https://github.com/Saad-Mahmud/CoLLAB_SEA" target="_blank" rel="noopener">https://github.com/Saad-Mahmud/CoLLAB_SEA</a></p>
     </div>
+
+    <figure>
+      <img src="paper/CoLLAB-F.png" alt="CoLLAB overview figure" />
+      <figcaption>Figure: CoLLAB couples natural‑language instructions and communication with a DCOP backbone for quantitative coordination.</figcaption>
+    </figure>
   </main>
 </body>
 </html>
