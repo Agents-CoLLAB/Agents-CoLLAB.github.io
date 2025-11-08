@@ -28,8 +28,10 @@
     .btn.secondary { background: #263143; color: #e8e9ea; font-weight: 600; }
     .muted { color: var(--muted); font-size: 0.9rem; }
 
-    .canvas { position: relative; background: #0f131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; min-height: calc(var(--ring-size) + 80px); overflow: auto; }
-    .ring { position: relative; width: var(--ring-size); height: var(--ring-size); margin: 32px auto; }
+    .canvas { position: relative; background: #0f131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; min-height: calc(var(--ring-size) + 120px); overflow: auto; }
+    .topbar { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(20,24,33,0.9); border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .title { font-weight: 800; letter-spacing: 0.3px; }
+    .ring { position: relative; width: var(--ring-size); height: var(--ring-size); margin: 24px auto 32px; }
     svg.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
     .agent { position: absolute; width: var(--agent-w); height: var(--agent-h); background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.25); z-index: 1; }
     .agent h3 { margin: 0 0 6px; font-size: 1.05rem; }
@@ -41,7 +43,8 @@
     .chip { padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem; }
     .agent .footer { position: absolute; left: 8px; right: 8px; bottom: 8px; }
 
-    .legend { display: flex; gap: 12px; align-items: center; padding: 10px 14px; background: #0f131a; border-top: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; }
+    .legend { display: flex; gap: 12px; align-items: center; }
+    .legend .item { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); font-size: 0.9rem; }
     .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
   </style>
 </head>
@@ -58,11 +61,18 @@
       </p>
     </aside>
     <main class="canvas">
+      <div class="topbar">
+        <div class="title">CoLLAB Personal Assistant Environment</div>
+        <div class="legend">
+          <span class="item"><span class="dot" style="background:#57d487"></span>Match</span>
+          <span class="item"><span class="dot" style="background:#ff6b6b"></span>Not match</span>
+          <span class="item"><span class="dot" style="background:#3aa3ff"></span>Disagree</span>
+        </div>
+      </div>
       <div class="ring" id="ring">
         <svg class="links" id="links" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
         <!-- Agents injected by script -->
       </div>
-      <div class="legend"><span class="dot"></span><span class="muted">Edges show neighbour relations (ring + opposite)</span></div>
     </main>
   </div>
 
@@ -72,7 +82,7 @@
     const ARTICLES = ["shirt","dress","jacket","blouse","sweater","coat","t‑shirt","hoodie"]; // simple
     const COLORS = ["red","blue","green","yellow","black","white","purple","orange","pink","teal"];
 
-    const state = { agents: [], edges: [] };
+    const state = { agents: [], edges: [], edgePrefs: {} };
 
     function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
     function choice(arr){ return arr[randInt(0,arr.length-1)]; }
@@ -96,7 +106,7 @@
           items.push({ article:a, color:c });
         }
         const prefColors = sample([...new Set(items.map(it=>it.color))], Math.min(2, items.length));
-        state.agents.push({ id:i, name, items, prefColors, mode:"match" });
+        state.agents.push({ id:i, name, items, prefColors });
       }
       for(let i=0;i<N;i++){
         const a=i, b=(i+1)%N, c=(i+N-1)%N, d=(i+3)%N;
@@ -106,6 +116,14 @@
           if(!state.edges.find(e=>e.key===key)) state.edges.push({u:Math.min(u,v), v:Math.max(u,v), key});
         }
       }
+      // per-edge endpoint preferences (match/contrast) randomized
+      state.edgePrefs = {};
+      state.edges.forEach(({u,v,key})=>{
+        state.edgePrefs[key] = {
+          [`${u}->${v}`]: Math.random()<0.5 ? 'match' : 'contrast',
+          [`${v}->${u}`]: Math.random()<0.5 ? 'match' : 'contrast',
+        };
+      });
       render();
     }
 
@@ -133,10 +151,6 @@
         el.innerHTML = `
           <h3>👤 ${agent.name}</h3>
           <div class="wardrobe">${wtxt}</div>
-          <div class="toggle">
-            <span class="pill ${agent.mode==='match'?'active':''}" data-mode="match">Match</span>
-            <span class="pill ${agent.mode==='contrast'?'active':''}" data-mode="contrast">Not Match</span>
-          </div>
           <div class="footer">
             <div class="muted" style="margin-bottom:4px;">Preferred colours</div>
             <div class="prefs">${agent.prefColors.map(c=>`<span class="chip">${c}</span>`).join('')}</div>
@@ -147,15 +161,6 @@
         const rect = { w: el.offsetWidth, h: el.offsetHeight };
         el.style.left = `${x - rect.w/2}px`;
         el.style.top  = `${y - rect.h/2}px`;
-        // toggle handlers
-        el.querySelectorAll('.pill').forEach(p=>{
-          p.addEventListener('click', (ev)=>{
-            const mode = ev.currentTarget.getAttribute('data-mode');
-            agent.mode = mode;
-            el.querySelectorAll('.pill').forEach(q=>q.classList.remove('active'));
-            ev.currentTarget.classList.add('active');
-          });
-        });
       });
       drawLinks();
     }
@@ -175,40 +180,30 @@
       // colors
       const colorMatch = '#57d487';
       const colorContrast = '#ff6b6b';
+      const colorDisagree = '#3aa3ff';
       state.edges.forEach(({u,v})=>{
         const a = ring.querySelector(`.agent[data-agent="${u}"]`);
         const b = ring.querySelector(`.agent[data-agent="${v}"]`);
         if(!a||!b) return;
         const ca = centerOf(a), cb = centerOf(b);
-        const mid = { x: (ca.x+cb.x)/2, y: (ca.y+cb.y)/2 };
+        const key = u<v ? `${u}-${v}` : `${v}-${u}`;
+        const prefs = state.edgePrefs[key] || {};
+        const pu = prefs[`${u}->${v}`] || 'match';
+        const pv = prefs[`${v}->${u}`] || 'match';
+        let col = colorMatch;
+        if (pu === 'match' && pv === 'match') col = colorMatch;
+        else if (pu === 'contrast' && pv === 'contrast') col = colorContrast;
+        else col = colorDisagree; // disagree
 
-        // color halves based on agent modes
-        const modeU = (state.agents[u].mode || 'match');
-        const modeV = (state.agents[v].mode || 'match');
-        const colU = modeU === 'match' ? colorMatch : colorContrast;
-        const colV = modeV === 'match' ? colorMatch : colorContrast;
-
-        // segment u -> mid
-        const l1 = document.createElementNS('http://www.w3.org/2000/svg','line');
-        l1.setAttribute('x1', (ca.x*scaleX).toFixed(2));
-        l1.setAttribute('y1', (ca.y*scaleY).toFixed(2));
-        l1.setAttribute('x2', (mid.x*scaleX).toFixed(2));
-        l1.setAttribute('y2', (mid.y*scaleY).toFixed(2));
-        l1.setAttribute('stroke', colU);
-        l1.setAttribute('stroke-width', '1.2');
-        l1.setAttribute('stroke-linecap', 'round');
-        svg.appendChild(l1);
-
-        // segment mid -> v
-        const l2 = document.createElementNS('http://www.w3.org/2000/svg','line');
-        l2.setAttribute('x1', (mid.x*scaleX).toFixed(2));
-        l2.setAttribute('y1', (mid.y*scaleY).toFixed(2));
-        l2.setAttribute('x2', (cb.x*scaleX).toFixed(2));
-        l2.setAttribute('y2', (cb.y*scaleY).toFixed(2));
-        l2.setAttribute('stroke', colV);
-        l2.setAttribute('stroke-width', '1.2');
-        l2.setAttribute('stroke-linecap', 'round');
-        svg.appendChild(l2);
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1', (ca.x*scaleX).toFixed(2));
+        line.setAttribute('y1', (ca.y*scaleY).toFixed(2));
+        line.setAttribute('x2', (cb.x*scaleX).toFixed(2));
+        line.setAttribute('y2', (cb.y*scaleY).toFixed(2));
+        line.setAttribute('stroke', col);
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(line);
       });
     }
 
