@@ -25,6 +25,7 @@
     .sidebar label { display: block; font-size: 0.9rem; color: var(--muted); margin-top: 10px; }
     .sidebar input[type="password"], .sidebar input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: #0f131a; color: #e8e9ea; }
     .btn { display: inline-block; margin-top: 10px; padding: 10px 12px; font-weight: 700; color: white; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border: none; cursor: pointer; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .btn.secondary { background: #263143; color: #e8e9ea; font-weight: 600; }
     .muted { color: var(--muted); font-size: 0.9rem; }
     .log { margin-top: 12px; height: 260px; overflow-y: auto; background: #0f131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12.5px; white-space: pre-wrap; }
@@ -60,7 +61,7 @@
       </label>
       <button class="btn" id="btnGenerate">Generate Problem</button>
       <button class="btn" id="btnStepRandom">Run 1 Step (Random)</button>
-      <button class="btn secondary" id="btnStep" title="Coming soon — runs one decision step with GPT" disabled>Run 1 Step (GPT)</button>
+      <button class="btn secondary" id="btnStep">Run 1 Step (GPT)</button>
       <p class="muted">This serverless demo generates a 6‑agent personal assistant instance in your browser. The decision step via GPT will use your API key locally (not sent to our servers).
       </p>
       <div id="log" class="log"></div>
@@ -70,6 +71,7 @@
         <div class="title">CoLLAB Personal Assistant Environment</div>
         <div class="topbar-right">
           <div class="util" id="util">Utility: 0</div>
+          <div class="util" id="gptCount">GPT: -</div>
           <div class="legend">
             <span class="item"><span class="dot" style="background:#57d487"></span>Match</span>
             <span class="item"><span class="dot" style="background:#ff6b6b"></span>Not match</span>
@@ -90,7 +92,7 @@
     const ARTICLES = ["shirt","dress","jacket","blouse","sweater","coat","t‑shirt","hoodie"]; // simple
     const COLORS = ["red","blue","green","yellow","black","white","purple","orange","pink","teal"];
 
-    const state = { agents: [], edges: [], edgePrefs: {} };
+    const state = { agents: [], edges: [], edgePrefs: {}, round: 0 };
 
     function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
     function choice(arr){ return arr[randInt(0,arr.length-1)]; }
@@ -138,6 +140,7 @@
       const util0 = updateUtility();
       resetLog();
       appendLog(state.round, util0);
+      setGptCountLabel('GPT: -');
     }
 
     function agentPosition(i){
@@ -224,6 +227,77 @@
       updateUtility();
     }
 
+    // --- GPT utilities ---
+    function getApiKey(){
+      const el = document.getElementById('apiKey');
+      return (el && el.value && el.value.trim()) ? el.value.trim() : null;
+    }
+    function neighboursOf(i){
+      const ns = new Set();
+      state.edges.forEach(({u,v})=>{ if(u===i) ns.add(v); else if(v===i) ns.add(u); });
+      return [...ns];
+    }
+    function buildPromptForAgent(i){
+      const a = state.agents[i];
+      const wardrobe = a.items.map((it,idx)=>`  ${idx+1}. ${it.color} ${it.article}`).join('\n');
+      const prefs = a.prefColors.join(', ');
+      const cons = neighboursOf(i).map(n=>{
+        const key = i<n ? `${i}-${n}` : `${n}-${i}`;
+        const pref = (state.edgePrefs[key]||{})[`${i}->${n}`] || 'match';
+        const nb = state.agents[n];
+        const nbChoice = nb.items[nb.choice];
+        return `- With ${nb.name}: prefer ${pref} on colour; neighbour currently chose ${nbChoice.color}.`;
+      }).join('\n');
+      const schema = JSON.stringify({
+        type: 'object',
+        properties: { choice: { type: 'integer', minimum: 1, maximum: a.items.length } },
+        required: ['choice'],
+        additionalProperties: false,
+      });
+      return `You are a personal assistant choosing an outfit for ${a.name}.\n`+
+        `Choose exactly one outfit index from 1..${a.items.length}.\n`+
+        `Wardrobe:\n${wardrobe}\n`+
+        `Personal colour preferences (reward if satisfied): ${prefs || 'none'}.\n`+
+        `Neighbour constraints (reward when satisfied):\n${cons || '(none)'}\n`+
+        `Output strictly valid JSON per schema with only the field \'choice\'.\n`+
+        `JSON Schema: ${schema}`;
+    }
+    async function gptPickChoice(i){
+      const apiKey = getApiKey();
+      if(!apiKey) throw new Error('Missing OpenAI API key');
+      const prompt = buildPromptForAgent(i);
+      const body = {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You output only valid JSON objects.'},
+          { role: 'user', content: prompt }
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0
+      };
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(body)
+      });
+      if(!resp.ok) throw new Error(`OpenAI HTTP ${resp.status}`);
+      const data = await resp.json();
+      let text = data?.choices?.[0]?.message?.content?.trim();
+      if(!text) throw new Error('Empty completion');
+      let obj;
+      try { obj = JSON.parse(text); }
+      catch(_){
+        const s = text.indexOf('{'); const e = text.lastIndexOf('}');
+        if(s>=0 && e>s) obj = JSON.parse(text.slice(s,e+1)); else throw new Error('No JSON found');
+      }
+      const k = Number(obj?.choice);
+      if(!Number.isInteger(k)) throw new Error('choice not integer');
+      return Math.max(1, Math.min(state.agents[i].items.length, k)) - 1;
+    }
+
     function updateUtility(){
       let total = 0;
       state.edges.forEach(({u,v})=>{
@@ -245,6 +319,11 @@
       const utilEl = document.getElementById('util');
       if (utilEl) utilEl.textContent = `Utility: ${total}`;
       return total;
+    }
+
+    function setGptCountLabel(text){
+      const el = document.getElementById('gptCount');
+      if (el) el.textContent = text;
     }
 
     function currentAssignmentLines(){
@@ -278,6 +357,33 @@
       render();
       const util = updateUtility();
       appendLog(state.round, util);
+      setGptCountLabel('GPT: -');
+    });
+    document.getElementById('btnStep')?.addEventListener('click', async ()=>{
+      const apiKey = getApiKey();
+      if(!apiKey){ alert('Please enter your OpenAI API key.'); return; }
+      const btnR = document.getElementById('btnStepRandom');
+      const btnG = document.getElementById('btnStep');
+      if(btnR) btnR.disabled = true; if(btnG) btnG.disabled = true;
+      try {
+        const picks = await Promise.all(state.agents.map((_,i)=>gptPickChoice(i).catch(()=>null)));
+        const succ = picks.filter(x=>x!=null).length;
+        state.agents.forEach((a,i)=>{
+          if(picks[i] == null){
+            // fallback to random on error
+            a.choice = randInt(0, a.items.length-1);
+          } else {
+            a.choice = picks[i];
+          }
+        });
+        state.round += 1;
+        render();
+        const util = updateUtility();
+        appendLog(state.round, util);
+        setGptCountLabel(`GPT: ${succ}/${state.agents.length}`);
+      } finally {
+        if(btnR) btnR.disabled = false; if(btnG) btnG.disabled = false;
+      }
     });
     // Placeholder: store key locally (not used yet)
     document.getElementById('apiKey').addEventListener('input', (e)=>{
