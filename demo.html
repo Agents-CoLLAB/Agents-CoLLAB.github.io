@@ -58,9 +58,11 @@
         <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
       </label>
       <button class="btn" id="btnGenerate">Generate Problem</button>
+      <button class="btn" id="btnStepRandom">Run 1 Step (Random)</button>
       <button class="btn secondary" id="btnStep" title="Coming soon — runs one decision step with GPT" disabled>Run 1 Step (GPT)</button>
       <p class="muted">This serverless demo generates a 6‑agent personal assistant instance in your browser. The decision step via GPT will use your API key locally (not sent to our servers).
       </p>
+      <div id="log" class="log"></div>
     </aside>
     <main class="canvas">
       <div class="topbar">
@@ -131,6 +133,9 @@
         };
       });
       render();
+      const util0 = updateUtility();
+      resetLog();
+      appendLog(state.round, util0);
     }
 
     function agentPosition(i){
@@ -171,6 +176,7 @@
         el.style.top  = `${y - rect.h/2}px`;
       });
       drawLinks();
+      updateUtility();
     }
 
     function centerOf(el){
@@ -238,8 +244,38 @@
       if (utilEl) utilEl.textContent = `Utility: ${total}`;
     }
 
+    function currentAssignmentLines(){
+      const lines = [];
+      state.agents.forEach(a=>{
+        const ch = a.items[a.choice];
+        lines.push(`${a.name}: #${a.choice+1} ${ch.color} ${ch.article}`);
+      });
+      return lines.join("\n");
+    }
+
+    function resetLog(){
+      const log = document.getElementById('log');
+      if (log) log.textContent = '';
+    }
+
+    function appendLog(roundNum, util){
+      const log = document.getElementById('log');
+      if (!log) return;
+      const header = `Round ${roundNum}  |  Utility: ${util}`;
+      const body = currentAssignmentLines();
+      log.textContent += header + "\n" + body + "\n\n";
+      log.scrollTop = log.scrollHeight;
+    }
+
     // Controls
     document.getElementById('btnGenerate').addEventListener('click', generateProblem);
+    document.getElementById('btnStepRandom')?.addEventListener('click', ()=>{
+      state.agents.forEach(a=>{ a.choice = randInt(0, a.items.length-1); });
+      state.round += 1;
+      render();
+      const util = updateUtility();
+      appendLog(state.round, util);
+    });
     // Placeholder: store key locally (not used yet)
     document.getElementById('apiKey').addEventListener('input', (e)=>{
       try { localStorage.setItem('collab_demo_openai_key', e.target.value || ''); } catch(e){}
