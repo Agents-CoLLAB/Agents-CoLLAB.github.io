@@ -62,6 +62,8 @@
       <button class="btn" id="btnGenerate">Generate Problem</button>
       <button class="btn" id="btnStepRandom">Run 1 Step (Random)</button>
       <button class="btn secondary" id="btnStep">Run 1 Step (GPT)</button>
+      <div class="muted" style="margin-top:10px;">Example GPT prompt:</div>
+      <pre class="prompt" id="promptExample"></pre>
       <p class="muted">This serverless demo generates a 6‑agent personal assistant instance in your browser. The decision step via GPT will use your API key locally (not sent to our servers).
       </p>
       <div id="log" class="log"></div>
@@ -92,7 +94,7 @@
     const ARTICLES = ["shirt","dress","jacket","blouse","sweater","coat","t‑shirt","hoodie"]; // simple
     const COLORS = ["red","blue","green","yellow","black","white","purple","orange","pink","teal"];
 
-    const state = { agents: [], edges: [], edgePrefs: {}, round: 0 };
+    const state = { agents: [], edges: [], edgePrefs: {}, round: 0, totalGptQueries: 0 };
 
     function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
     function choice(arr){ return arr[randInt(0,arr.length-1)]; }
@@ -140,7 +142,12 @@
       const util0 = updateUtility();
       resetLog();
       appendLog(state.round, util0);
-      setGptCountLabel('GPT: -');
+      state.totalGptQueries = 0;
+      setGptCountLabel('GPT queries: - | Total: 0');
+      // example prompt
+      const ex = buildPromptForAgent?.(0) || '';
+      const exBox = document.getElementById('promptExample');
+      if (exBox) exBox.textContent = ex;
     }
 
     function agentPosition(i){
@@ -357,7 +364,7 @@
       render();
       const util = updateUtility();
       appendLog(state.round, util);
-      setGptCountLabel('GPT: -');
+      setGptCountLabel(`GPT queries: - | Total: ${state.totalGptQueries}`);
     });
     document.getElementById('btnStep')?.addEventListener('click', async ()=>{
       const apiKey = getApiKey();
@@ -368,6 +375,7 @@
       try {
         const picks = await Promise.all(state.agents.map((_,i)=>gptPickChoice(i).catch(()=>null)));
         const succ = picks.filter(x=>x!=null).length;
+        state.totalGptQueries += state.agents.length;
         state.agents.forEach((a,i)=>{
           if(picks[i] == null){
             // fallback to random on error
@@ -380,7 +388,7 @@
         render();
         const util = updateUtility();
         appendLog(state.round, util);
-        setGptCountLabel(`GPT: ${succ}/${state.agents.length}`);
+        setGptCountLabel(`GPT queries: ${succ}/${state.agents.length} | Total: ${state.totalGptQueries}`);
       } finally {
         if(btnR) btnR.disabled = false; if(btnG) btnG.disabled = false;
       }
