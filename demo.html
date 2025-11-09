@@ -56,7 +56,7 @@
     @media (max-width: 860px) {
       .layout { grid-template-columns: 1fr; }
       .sidebar { position: static; }
-      :root { --agent-w: 190px; --agent-h: 220px; }
+      :root { --agent-w: 160px; --agent-h: 200px; }
       .ring {
         width: min(560px, calc(100vw - 40px));
         height: min(560px, calc(100vw - 40px));
@@ -168,8 +168,8 @@
       const R = ring.getBoundingClientRect();
       const cx = R.width/2, cy = R.height/2;
       const minDim = Math.min(R.width, R.height);
-      // Adaptive padding so small screens keep a visible ring; clamps between 40 and 120px
-      const pad = Math.max(40, Math.min(120, minDim * 0.18));
+      // Adaptive padding: keep agents farther out so interior edges stay visible on mobile
+      const pad = Math.max(20, Math.min(90, minDim * 0.10));
       const radius = Math.max(10, (minDim / 2) - pad);
       const theta = (2*Math.PI * i)/N - Math.PI/2; // start at top
       const x = cx + radius * Math.cos(theta);
