@@ -28,6 +28,10 @@
     .btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .btn.secondary { color: #e8e9ea; font-weight: 700; background: linear-gradient(135deg, var(--accent-2), var(--accent)); box-shadow: 0 10px 24px rgba(91,140,255,0.35); }
     .muted { color: var(--muted); font-size: 0.9rem; }
+    .callout { margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,193,7,0.35); background: rgba(255,193,7,0.12); color: #ffe08a; line-height: 1.45; font-size: 0.93rem; }
+    .callout strong { color: #ffd45c; }
+    .callout ul { margin: 8px 0 0; padding-left: 16px; }
+    .callout li { margin: 4px 0; }
     .log { margin-top: 12px; height: 260px; overflow-y: auto; background: #0f131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12.5px; white-space: pre-wrap; }
     .info { margin-top: 12px; background: #0f131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px; color: var(--muted); font-size: 0.95rem; line-height: 1.45; }
     .prompt { margin-top: 10px; max-width: 100%; height: 220px; overflow-y: auto; overflow-x: auto; background: #0f131a; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12.5px; white-space: pre; color: #cfd6e4; }
@@ -75,7 +79,14 @@
   <div class="layout">
     <aside class="sidebar">
       <h2>Controls</h2>
-      <p class="muted">This serverless demo generates a 6‑agent personal assistant instance in your browser. The decision step via GPT will use your API key locally (not sent to our servers).</p>
+      <div class="callout">
+        <strong>Transparency.</strong> This serverless demo builds a 6‑agent assistant entirely in your browser.
+        <ul>
+          <li>Your OpenAI API key is kept locally (saved to this tab’s localStorage) and used only to send calls from your browser directly to api.openai.com for the GPT decision step; we do not proxy or store it on our servers.</li>
+          <li>Risks: anyone with access to this browser profile can read the stored key; traffic goes to OpenAI and may be visible to network monitors or extensions; prompts you enter are sent to OpenAI and count against your usage.</li>
+          <li>Use a limited-scope key, avoid sensitive data, and clear the field when finished. The page’s code lives in `page/demo.html` if you want to inspect it.</li>
+        </ul>
+      </div>
       <label>OpenAI API Key
         <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
       </label>
